@@ -87,6 +87,7 @@
   ;; Customize the display transformation for `ivy-switch-buffer`.
   (setq ivy-rich-display-transformers-list
         (plist-put ivy-rich-display-transformers-list
+
                    'ivy-switch-buffer
                    '(:columns
                      ;; Define columns for buffer names, indicators, major mode, project, and file path.
@@ -110,7 +111,7 @@
   :init (which-key-mode)
   :diminish which-key-mode
   :config
-  (setq which-key-idle-delay 0.3)
+  (setq which-key-idle-delay 0.2)
   )
 
 ;; A more informative help system
@@ -195,7 +196,11 @@
 ;; NOTE: The first time you use this package, you need to run M-x all-the-icons-install-fonts manually
 (use-package all-the-icons
   :if (display-graphic-p) ;; check if Emacs is running in a graphical display and not inside a termina;
- )
+  :commands (all-the-icons-install-fonts)
+  :init
+  (unless (find-font (font-spec :name "all-the-icons"))
+    (all-the-icons-install-fonts t))
+  )
 
 
 ;; Doom modeline for a fancy status bar
@@ -238,7 +243,7 @@
   :init
   (add-hook 'after-init-hook 'global-company-mode)
   (setq company-minimum-prefix-length 3
-        company-selection-wrap-around t
+        company-selection-wrap-around t 
         company-tooltip-limit 20
         company-tooltip-minimum-width 15
         company-tooltip-align-annotations t))
@@ -248,34 +253,52 @@
   :straight (:host github :repo "copilot-emacs/copilot.el" :files ("dist" "*.el"))
   :diminish ;; don't show in mode line (we don't wanna get caught cheating, right? ;)
   :config
- ;; Global keybindings
+
+  ;; global keybindings
   (general-def
-    "M-C-<return>" #'exile/copilot-complete-or-accept ; for manual mode completion
-    "TAB" #'exile/copilot-tab ; for tab completion
+    "TAB" #'exile/company-or-copilot-or-indent ; for tab completion
     )
+  (define-key global-map (kbd "M-C-<return>") #'exile/copilot-complete-or-accept) ;; for manual mode
+  ;; complete by pressing right or tab but only when copilot completions are
+  ;; shown. This means we leave the normal functionality intact.
   )
 
 ;; variables for copilot
 (defvar exile/copilot-manual-mode nil
-  "When `t' will only show completions when manually triggered, e.g. via M-C-<return>.")
+  "When `t' will only show completions when manually triggered ")
 
 (defvar exile/copilot-enable-for-org nil
   "Should copilot be enabled for org-mode buffers?")
 
-;; Functions for copilot
+(defvar exile/company-active nil
+  "Flag to indicate whether Company's completion menu is active.")
 
-(defun exile/copilot-tab ()
-  "Tab command that will complet with copilot if a completion is
-available. Otherwise will try company, yasnippet or normal
-tab-indent."
-  (interactive)
-  (or (copilot-accept-completion)
-      (company-yasnippet-or-completion)
-      (indent-for-tab-command)))
+;; WARNING: this might be a bit of a hack, but it works for now
+(defun exile/clear-copilot-during-company ()
+  "Clear Copilot's overlay if Company is active."
+  (when exile/company-active
+    (copilot-clear-overlay)))
+
+(defun exile/company-started (arg)
+  "Hook function called when Company completion starts."
+  (setq exile/company-active t)
+  (add-hook 'pre-command-hook #'exile/clear-copilot-during-company)
+  (message "Company completion started."))
+
+(defun exile/company-finished (arg)
+  "Hook function called when Company completion finishes or is cancelled."
+  (remove-hook 'pre-command-hook #'exile/clear-copilot-during-company)
+  (setq exile/company-active nil)
+  (message "Company completion finished."))
+
+(with-eval-after-load 'company
+  (add-hook 'company-completion-started-hook #'exile/company-started)
+  (add-hook 'company-completion-finished-hook #'exile/company-finished)
+  (add-hook 'company-completion-cancelled-hook #'exile/company-finished))
 
 (defun exile/copilot-complete-or-accept ()
   "Command that either triggers a completion or accepts one if one
-is available. Useful if you tend to hammer your keys like I do."
+is available. "
   (interactive)
   (if (copilot--overlay-visible)
       (progn
@@ -284,6 +307,28 @@ is available. Useful if you tend to hammer your keys like I do."
         (next-line))
     (copilot-complete)))
 
+(defun exile/company-or-copilot-or-indent ()
+"Enhanced completion logic to avoid conflicts between Copilot and Company."
+  (interactive)
+  (cond
+   ;; If Company's completion menu is active, let Company handle the completion.
+   (exile/company-active
+    (company-complete-selection))
+   
+   ;; If Copilot's overlay is visible, try to accept a Copilot completion.
+   ((copilot--overlay-visible)
+    (copilot-accept-completion))
+   
+   ;; Try to manually trigger Company completion if it's available and not already active.
+   ((and (bound-and-true-p company-mode) ;; Ensure company-mode is active
+         (not exile/company-active)) ;; Ensure Company's completion menu isn't already showing
+    (company-manual-begin))
+   
+   ;; Fallback to default indentation if neither completion system acts.
+   (t
+    (indent-for-tab-command))))
+
+
 (defun exile/copilot-activate ()
   "Activate Copilot globally. If already activated, inform the user."
   (interactive)
@@ -291,7 +336,7 @@ is available. Useful if you tend to hammer your keys like I do."
       (message "Copilot is already activated")
     (progn
       (copilot-mode 1)
-      (setq rk/copilot-manual-mode nil)
+      (setq exile/copilot-manual-mode nil)
       (message "Copilot activated"))))
 
 (defun exile/copilot-deactivate ()
@@ -300,15 +345,15 @@ is available. Useful if you tend to hammer your keys like I do."
   (if copilot-mode
       (progn
         (copilot-mode -1)
-        (setq rk/copilot-manual-mode nil)
+        (setq exile/copilot-manual-mode nil)
         (message "Copilot deactivated"))
     (message "Copilot is already deactivated")))
 
 (defun exile/copilot-toggle-manual-mode ()
   "Toggle Copilot's manual mode. Activate Copilot globally if toggling out of manual mode."
   (interactive)
-  (setq rk/copilot-manual-mode (not rk/copilot-manual-mode)) ; Toggle the manual mode flag.
-  (if rk/copilot-manual-mode
+  (setq exile/copilot-manual-mode (not exile/copilot-manual-mode)) ; Toggle the manual mode flag.
+  (if exile/copilot-manual-mode
       (message "Copilot manual mode activated")
     (progn
       (unless copilot-mode
@@ -319,8 +364,8 @@ is available. Useful if you tend to hammer your keys like I do."
   "Toggle copilot activation in org mode. It can sometimes be
 annoying, sometimes be useful, that's why this can be handly."
   (interactive)
-  (setq rk/copilot-enable-for-org (not rk/copilot-enable-for-org))
-  (message "copilot for org is %s" (if rk/copilot-enable-for-org "enabled" "disabled")))
+  (setq exile/copilot-enable-for-org (not exile/copilot-enable-for-org))
+  (message "copilot for org is %s" (if exile/copilot-enable-for-org "enabled" "disabled")))
 
 ;; End of Emacs Configuration
 (custom-set-variables
