@@ -169,6 +169,20 @@
     :keymaps '(normal insert visual emacs)
     :prefix "SPC"
     :global-prefix "C-SPC")
+
+  ;; Define Magit keybindings under the 'g' prefix for Git
+  (exile/leader-keys
+    "g" '(:ignore t :which-key "git (magit)")
+    "gs" '(magit-status :which-key "status")
+    "gc" '(magit-commit :which-key "commit")
+    "gp" '(:ignore t :which-key "push/pull")
+    "gpp" '(magit-push :which-key "push")
+    "gpl" '(magit-pull :which-key "pull")
+    "gb" '(magit-branch :which-key "branch")
+    "gf" '(magit-fetch :which-key "fetch")
+    "gl" '(magit-log-all :which-key "log")
+    "gd" '(magit-diff :which-key "diff"))
+
   (exile/leader-keys
    "c" '(:ignore t :which-key "copilot")
    "cm" '(exile/copilot-toggle-manual-mode :which-key "toggle manual mode")
