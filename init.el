@@ -1,5 +1,6 @@
 ;; -*- lexical-binding: t -*-
 
+
 ;; Bootstrap straight.el
 (defvar bootstrap-version)
 (let ((bootstrap-file
@@ -17,6 +18,18 @@
       (eval-print-last-sexp)))
   (load bootstrap-file nil 'nomessage))
 
+;; random variables
+(defvar exile/default-font-size 150)
+
+
+;; set default enocding to utf-8
+(prefer-coding-system 'utf-8)
+(set-default-coding-systems 'utf-8)
+(set-terminal-coding-system 'utf-8)
+(set-keyboard-coding-system 'utf-8)
+(setq default-buffer-file-coding-system 'utf-8)
+
+
 ;; Use-package integration
 (straight-use-package 'use-package)
 
@@ -33,9 +46,18 @@
 (set-fringe-mode 10) ; Give some breathing room
 (setq visible-bell t) ; Set up the visible bell
 (menu-bar-mode -1) ; Disable the menu bar
+(set-frame-parameter (selected-frame) 'alpha '(90 . 90)) ;; Set transparency 
+(add-to-list 'default-frame-alist '(alpha . (90 . 90))) ;; Set transparency
 
 ;; Set custom font
-(set-face-attribute 'default nil :font "CaskaydiaCove Nerd Font" :height 150)
+(set-face-attribute 'default nil :font "CaskaydiaCove Nerd Font" :height exile/default-font-size)
+
+;; Set the fixed pitch face
+(set-face-attribute 'fixed-pitch nil :font "CaskaydiaCove Nerd Font" :height exile/default-font-size)
+
+;; Set the variable pitch face
+(set-face-attribute 'variable-pitch nil :font "CaskaydiaCove Nerd Font" :height exile/default-font-size :weight 'regular)
+
 
 ;; Make ESC quit prompts
 (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
@@ -113,7 +135,7 @@
   :init (which-key-mode)
   :diminish which-key-mode
   :config
-  (setq which-key-idle-delay 0.2)
+  (setq which-key-idle-delay 0.3)
   )
 
 ;; A more informative help system
@@ -164,6 +186,26 @@
   (evil-collection-init)
   )
 
+;; undo tree
+(use-package undo-tree
+  :init
+  (global-undo-tree-mode 1)
+  :config
+  (setq undo-tree-auto-save-history t) ;; Enable auto-saving of undo history
+  (setq undo-tree-history-directory-alist '(("." . "~/.emacs.d/undo-tree-history"))) ;; Specify where to save undo history files
+  (evil-set-undo-system 'undo-tree))
+
+;; Create the directory if it does not exist
+(unless (file-exists-p "~/.emacs.d/undo-tree-history")
+  (make-directory "~/.emacs.d/undo-tree-history" t))
+
+;; Org mode configuration for habit tracking
+(defun exile/org-set-habit ()
+  "Set the current Org mode item as a habit."
+  (interactive)
+  (org-set-property "STYLE" "habit"))
+
+
 ;; General keybindings management
 ;; TODO: Customise for my liking and used cmds
 (use-package general
@@ -191,7 +233,35 @@
    "cm" '(exile/copilot-toggle-manual-mode :which-key "toggle manual mode")
    "ce" '(exile/copilot-activate :which-key "enable copilot")
    "cd" '(exile/copilot-deactivate :which-key "disable copilot")
-  ))
+   )
+
+  ;; for org capture
+  (exile/leader-keys
+   "o" '(:ignore t :which-key "org mode")
+   "oc" '(org-capture :which-key "capture")
+   "oa" '(org-agenda :which-key "agenda")
+   "ot" '(counsel-org-tag :which-key "set tags")
+   "oe" '(org-set-effort :which-key "set effort based on time")
+   "ol" '(org-insert-link :which-key "insert link")
+   "oi" '(org-toggle-inline-images :which-key "toggle images")
+   "or" '(org-refile :which-key "refile")
+   "os" '(org-schedule :which-key "schedule")
+   "od" '(org-deadline :which-key "deadline")
+   "ou" '(org-time-stamp :which-key " add a time stamp")
+   "oh" '(exile/org-set-habit :which-key "set as habit")
+   )
+
+  )
+
+
+
+(use-package hydra)
+
+(defhydra hydra-text-scale (:timeout 4)
+  "scale text"
+  ("j" text-scale-increase "in")
+  ("k" text-scale-decrease "out")
+  ("f" nil "finished" :exit t))
 
 ;; Further enhancing Ivy with icons
 (use-package all-the-icons
@@ -241,6 +311,185 @@
                 shell-mode-hook
                 eshell-mode-hook))
   (add-hook mode (lambda () (display-line-numbers-mode 0))))
+
+;; org mode
+
+(defun exile/org-mode-setup ()
+  (org-indent-mode)
+  (variable-pitch-mode 1)
+  (visual-line-mode 1)
+ )
+
+(defun exile/org-font-setup ()
+;; Replace list hyphen with dot
+  (font-lock-add-keywords 'org-mode
+			  '(("^ *\\([-]\\) "
+			    (0 (prog1 () (compose-region (match-beginning 1) (match-end 1) "•"))))))
+
+  (dolist (face '((org-level-1 . 1.6)
+                  (org-level-2 . 1.5)
+                  (org-level-3 . 1.4)
+                  (org-level-4 . 1.4)
+                  (org-level-5 . 1.3)
+                  (org-level-6 . 1.3)
+                  (org-level-7 . 1.2)
+                  (org-level-8 . 1.2)))
+    (set-face-attribute (car face) nil
+			:font "CaskaydiaCove Nerd Font"
+			:weight 'regular
+			:height (round (* 100 (cdr face)))))
+
+;; Ensure that anything that should be fixed-pitch in Org files appears that way
+  (set-face-attribute 'org-block nil :foreground 'unspecified :inherit 'fixed-pitch)
+  (set-face-attribute 'org-code nil   :inherit '(shadow fixed-pitch))
+  (set-face-attribute 'org-table nil   :inherit '(shadow fixed-pitch))
+  (set-face-attribute 'org-verbatim nil :inherit '(shadow fixed-pitch))
+  (set-face-attribute 'org-special-keyword nil :inherit '(font-lock-comment-face fixed-pitch))
+  (set-face-attribute 'org-meta-line nil :inherit '(font-lock-comment-face fixed-pitch))
+  (set-face-attribute 'org-checkbox nil :inherit 'fixed-pitch)
+ )
+
+
+(use-package org
+  :hook (org-mode . exile/org-mode-setup)
+  :config
+  (setq org-ellipsis " ▼")
+  (setq org-agenda-start-with-log-mode t)
+  (setq org-log-done 'time)
+  (setq org-log-into-drawer t)
+
+  (setq org-agenda-files
+	'("~/.emacs.d/OrgFiles/Tasks.org"
+	"~/.emacs.d/OrgFiles/Birthdays.org"
+	"~/.emacs.d/OrgFiles/Habits.org"
+	"~/.emacs.d/OrgFiles/DrawingTasks.org"
+	)
+	)
+
+  (require 'org-habit)
+  (add-to-list 'org-modules 'org-habit)
+  (setq org-habit-graph-column 60)
+
+  (setq org-todo-keywords
+	'((sequence "TODO(t)" "NEXT(n)" "|" "DONE(d!)")
+	  (sequence "BACKLOG(b)" "PLAN(p)" "READY(r)" "ACTIVE(a)" "REVIEW(v)" "WAIT(w@/!)" "HOLD(h)" "|" "COMPLETED(c)" "CANC(k@)")))
+
+  (setq org-refile-targets
+    '(("Archive.org" :maxlevel . 1)
+      ("Tasks.org" :maxlevel . 1)))
+
+  ;; Save Org buffers after refiling!
+  (advice-add 'org-refile :after 'org-save-all-org-buffers)
+
+    (setq org-tag-alist
+    '((:startgroup)
+       ; Put mutually exclusive tags here
+       (:endgroup)
+       ("errand" . ?E)
+       ("home" . ?H)
+       ("work" . ?W)
+       ("agenda" . ?a)
+       ("planning" . ?p)
+       ("note" . ?n)
+       ("meeting" . ?m)
+       ("personal" . ?P)
+       ("idea" . ?i)))
+
+  ;; Configure custom agenda views
+  (setq org-agenda-custom-commands
+   '(("d" "Dashboard"
+     ((agenda "" ((org-deadline-warning-days 7)))
+      (todo "NEXT"
+        ((org-agenda-overriding-header "Next Tasks")))
+      (tags-todo "agenda/ACTIVE" ((org-agenda-overriding-header "Active Projects")))))
+
+    ("n" "Next Tasks"
+     ((todo "NEXT"
+        ((org-agenda-overriding-header "Next Tasks")))))
+
+    ("W" "Work Tasks" tags-todo "+work")
+    ("M" "Meetings" tags-todo "+meeting")
+
+    ;; Low-effort next actions
+    ("e" tags-todo "+TODO=\"NEXT\"+Effort<15&+Effort>0"
+     ((org-agenda-overriding-header "Low Effort Tasks")
+      (org-agenda-max-todos 20)
+      (org-agenda-files org-agenda-files)))
+
+    ("w" "Workflow Status"
+     ((todo "WAIT"
+            ((org-agenda-overriding-header "Waiting on External")
+             (org-agenda-files org-agenda-files)))
+      (todo "REVIEW"
+            ((org-agenda-overriding-header "In Review")
+             (org-agenda-files org-agenda-files)))
+      (todo "PLAN"
+            ((org-agenda-overriding-header "In Planning")
+             (org-agenda-todo-list-sublevels nil)
+             (org-agenda-files org-agenda-files)))
+      (todo "BACKLOG"
+            ((org-agenda-overriding-header "Project Backlog")
+             (org-agenda-todo-list-sublevels nil)
+             (org-agenda-files org-agenda-files)))
+      (todo "READY"
+            ((org-agenda-overriding-header "Ready for Work")
+             (org-agenda-files org-agenda-files)))
+      (todo "ACTIVE"
+            ((org-agenda-overriding-header "Active Projects")
+             (org-agenda-files org-agenda-files)))
+      (todo "COMPLETED"
+            ((org-agenda-overriding-header "Completed Projects")
+             (org-agenda-files org-agenda-files)))
+      (todo "CANC"
+            ((org-agenda-overriding-header "Cancelled Projects")
+             (org-agenda-files org-agenda-files)))))))
+
+    (setq org-capture-templates
+    `(("t" "Tasks / Projects")
+      ("tt" "Task" entry (file+olp "~/.emacs.d/OrgFiles/Tasks.org" "Inbox")
+           "* TODO %?\n  %U\n  %a\n  %i" :empty-lines 1)
+
+      ("j" "Journal Entries")
+      ("jj" "Journal" entry
+           (file+olp+datetree "~/.emacs.d/OrgFiles/Journal.org")
+           "\n* %<%I:%M %p> - Journal :journal:\n\n%?\n\n"
+           :clock-in :clock-resume
+           :empty-lines 1)
+      ("jm" "Meeting" entry
+           (file+olp+datetree "~/.emacs.d/OrgFiles/Journal.org")
+           "* %<%I:%M %p> - %a :meetings:\n\n%?\n\n"
+           :clock-in :clock-resume
+           :empty-lines 1)
+
+      ("w" "Workflows")
+      ("we" "Checking Email" entry (file+olp+datetree "~/.emacs.d/OrgFiles/Journal.org")
+           "* Checking Email :email:\n\n%?" :clock-in :clock-resume :empty-lines 1)
+
+      ("m" "Metrics Capture")
+      ("mw" "Weight" table-line (file+headline "~/.emacs.d/OrgFiles/Metrics.org" "Weight")
+       "| %U | %^{Weight} | %^{Notes} |" :kill-buffer t)
+      ("me" "Food" table-line (file+headline "~/.emacs.d/OrgFiles/Metrics.org" "Food")
+       "| %U | %^{Food} | %^{Notes} |" :kill-buffer t)))
+ 
+  (exile/org-font-setup)
+  )
+
+(use-package org-bullets
+  :after org
+  :hook (org-mode . org-bullets-mode)
+  :custom
+  (org-bullets-bullet-list '("◉" "○" "✸" "✿" "✜" "✚" "✦"))
+  )
+
+;; center text in org mode
+(defun exile/org-mode-visual-fill ()
+  (setq visual-fill-column-width 100
+	visual-fill-column-center-text t)
+  (visual-fill-column-mode 1))
+
+(use-package visual-fill-column
+  :hook (org-mode . exile/org-mode-visual-fill)
+  )
 
 ;; company - auto-completion
 (use-package company
