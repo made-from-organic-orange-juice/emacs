@@ -1,0 +1,893 @@
+#+title Emacs Configuration
+#+PROPERTY: header-args:emacs-lisp :tangle ../init.el :mkdirp yes
+
+* Introduction
+Welcome to my personal Emacs configuration, neatly organized within this Org document. The primary goal here is to create a setup that's not only efficient and tailored to my workflow but also well-documented for future reference. By leveraging `org-mode`, I aim to keep this configuration readable and easily modifiable.
+
+** Key Highlights:
+- **Bootstrap and Package Management:** Setting up `straight.el` and `use-package` for a cleaner package management experience.
+- **Basic and UI Settings:** Customizing Emacs to look and behave just the way I like, focusing on aesthetics and usability.
+- **Org Mode Enhancements:** Fine-tuning `org-mode` for productivity in note-taking, task management, and literate programming.
+- **Development Tools:** Configuring essential tools for coding, including autocompletion, syntax checking, and more.
+
+This document is primarily for my future self, to navigate and understand the choices made at different points in time. It's structured to facilitate easy updates and adjustments as my Emacs journey evolves.
+
+* Bootstrap and Package Management
+** Bootstrap straight.el
+*** Straight.el Setup
+`straight.el` is an Emacs package manager that offers an alternative to the built-in `package.el`. It focuses on reproducibility, extensibility, and performance. Unlike `package.el`, `straight.el` clones packages directly from their source repositories, allowing for easy modification, contribution back to upstream, and ensuring that you're always working with the latest version of a package.
+
+One of the key reasons for choosing `straight.el` is its seamless integration with `use-package`, which simplifies the declaration and management of package configurations. Additionally, `straight.el`'s approach to package management aligns well with my preference for having a more controlled and transparent setup.
+
+
+for more information see: [[https://github.com/radian-software/straight.el][github repositry for straight]]!
+
+#+begin_src emacs-lisp
+  ;; -*- lexical-binding: t -*-
+
+  (defvar bootstrap-version)
+  (let ((bootstrap-file
+         (expand-file-name
+          "straight/repos/straight.el/bootstrap.el"
+          (or (bound-and-true-p straight-base-dir)
+              user-emacs-directory)))
+        (bootstrap-version 7))
+    (unless (file-exists-p bootstrap-file)
+      (with-current-buffer
+          (url-retrieve-synchronously
+           "https://raw.githubusercontent.com/radian-software/straight.el/develop/install.el"
+           'silent 'inhibit-cookies)
+        (goto-char (point-max))
+        (eval-print-last-sexp)))
+    (load bootstrap-file nil 'nomessage))
+#+end_src
+
+This snippet ensures that `straight.el` is properly bootstrapped in my Emacs setup. It checks if the bootstrap file is already present; if not, it downloads and evaluates it. This is crucial for initializing `straight.el` and making it ready to manage other packages.
+
+** Use-Package Integration
+`use-package` simplifies Emacs package configuration, and its integration with `straight.el` enhances package installation directly from source repositories. Below is the essential configuration to integrate `use-package` with `straight.el`:
+
+#+BEGIN_SRC emacs-lisp
+  ;; Integrate use-package with straight.el for package installation
+
+  (straight-use-package 'use-package)
+  (setq straight-use-package-by-default t)
+#+END_SRC
+
+This configuration ensures all packages declared with `use-package` are automatically managed by `straight.el`, simplifying package installation and management in my Emacs setup.
+If that should not be the case, you can use ':straight nil' to disable straight for a specific package. 
+
+* Basic Settings 
+** Configuration Variables
+To enhance modularity and ease of customization, key aspects of the Emacs setup are controlled through variables. These variables allow for quick adjustments without delving into the configuration details. Here are some foundational variables defined for this purpose:
+
+#+BEGIN_SRC emacs-lisp
+  (defvar exile/default-font-size 150 "Default font size for Emacs.")
+  (defvar exile/font-name "CaskaydiaCove Nerd Font" "Default font for Emacs.")
+  (defvar exile/theme 'doom-gruvbox "Default theme for Emacs.")
+  (defvar exile/org-directory "~/.emacs.d/OrgFiles/" "Directory for Org files.")
+  (defvar exile/emacs-file (concat exile/org-directory "Emacs.org") "Our Emacs Configuration")
+  (defvar exile/org-agenda-files '("~/.emacs.d/OrgFiles/Tasks.org"
+  	"~/.emacs.d/OrgFiles/Birthdays.org"
+  	"~/.emacs.d/OrgFiles/Habits.org"
+  	"~/.emacs.d/OrgFiles/DrawingTasks.org"
+  	))
+  (defvar exile/padding 10 "Padding for text area.")
+
+  (custom-set-variables
+   ;; custom-set-variables was added by Custom.
+   ;; If you edit it by hand, you could mess it up, so be careful.
+   ;; Your init file should contain only one such instance.
+   ;; If there is more than one, they won't work right.
+   '(warning-suppress-log-types '(((copilot copilot-no-mode-indent)))))
+  (custom-set-faces
+   ;; custom-set-faces was added by Custom.
+   ;; If you edit it by hand, you could mess it up, so be careful.
+   ;; Your init file should contain only one such instance.
+   ;; If there is more than one, they won't work right.
+   )
+
+#+END_SRC
+
+These variables are used throughout the configuration to maintain consistency and facilitate easy updates or modifications.
+
+** Setting Default Encoding
+UTF-8 is a widely adopted encoding standard that can represent virtually any character from all modern writing systems. Here, I set UTF-8 as the default encoding for all Emacs operations to ensure consistent handling of file contents.
+
+#+BEGIN_SRC emacs-lisp
+
+  ;; Set UTF-8 as the default encoding
+  (prefer-coding-system 'utf-8)
+  (set-default-coding-systems 'utf-8)
+  (set-terminal-coding-system 'utf-8)
+  (set-keyboard-coding-system 'utf-8)
+  (setq default-buffer-file-coding-system 'utf-8)
+#+END_SRC
+
+This setup guarantees that Emacs will favor UTF-8 for all encoding and decoding tasks, from reading and writing files to interacting with external processes, enhancing overall compatibility and reliability.
+
+** Basic UI Settings
+These Emacs customizations streamline the interface for a cleaner look and feel.
+
+#+BEGIN_SRC emacs-lisp
+
+  ;; Hide the startup message
+  (setq inhibit-startup-message t)
+
+  ;; Disable the scroll bar, tool bar, and tooltips
+  (scroll-bar-mode -1)
+  (tool-bar-mode -1)
+  (tooltip-mode -1)
+
+  ;; Add padding around the text area
+  (set-fringe-mode exile/padding)
+
+  ;; Use a visual bell instead of an audible one
+  (setq visible-bell t)
+
+  ;; Disable the menu bar
+  (menu-bar-mode -1)
+
+  ;; Set frame transparency
+  (set-frame-parameter (selected-frame) 'alpha '(90 . 90))
+  (add-to-list 'default-frame-alist '(alpha . (90 . 90)))
+
+  ;; Line numbers
+  (column-number-mode)
+  (global-display-line-numbers-mode t)
+
+  ;; Exclude line numbers in certain modes
+  (dolist (mode '(org-mode-hook
+                 term-mode-hook
+                 shell-mode-hook
+                 eshell-mode-hook))
+   (add-hook mode (lambda () (display-line-numbers-mode 0))))
+#+END_SRC
+
+These settings adjust visual elements like bars and menus, and apply transparency to the frame for a minimalist workspace and add line numbers to the left of each line in the buffer.
+* Font Configuration
+** Setting Custom Fonts
+To ensure a consistent and comfortable reading experience across Emacs, custom fonts are set for general use, code editing, and `org-mode` enhancements. The chosen font, is applied to key faces, with specific adjustments for improved legibility and aesthetics.
+
+#+BEGIN_SRC emacs-lisp
+
+  ;; Set the default, fixed-pitch, and variable-pitch fonts
+  (set-face-attribute 'default nil :font exile/font-name :height exile/default-font-size)
+  (set-face-attribute 'fixed-pitch nil :font exile/font-name :height exile/default-font-size)
+  (set-face-attribute 'variable-pitch nil :font exile/font-name :height exile/default-font-size :weight 'regular)
+#+END_SRC
+
+In addition to these general settings, font-specific adjustments within `org-mode` are crucial for a unified and visually appealing documentation and note-taking environment.
+
+*** Org Mode Font Customization
+`org-mode` benefits from tailored font settings for headings, blocks, and special keywords to distinguish structure and content visually.
+
+#+BEGIN_SRC emacs-lisp
+(defun exile/org-font-setup ()
+;; Replace list hyphen with dot
+  (font-lock-add-keywords 'org-mode
+			  '(("^ *\\([-]\\) "
+			    (0 (prog1 () (compose-region (match-beginning 1) (match-end 1) "•"))))))
+
+  (dolist (face '((org-level-1 . 1.6)
+                  (org-level-2 . 1.5)
+                  (org-level-3 . 1.4)
+                  (org-level-4 . 1.4)
+                  (org-level-5 . 1.3)
+                  (org-level-6 . 1.3)
+                  (org-level-7 . 1.2)
+                  (org-level-8 . 1.2)))
+    (set-face-attribute (car face) nil
+			:font exile/font-name 
+			:weight 'regular
+			:height (round (* 100 (cdr face)))))
+
+;; Ensure that anything that should be fixed-pitch in Org files appears that way
+  (set-face-attribute 'org-block nil :foreground 'unspecified :inherit 'fixed-pitch)
+  (set-face-attribute 'org-code nil   :inherit '(shadow fixed-pitch))
+  (set-face-attribute 'org-table nil   :inherit '(shadow fixed-pitch))
+  (set-face-attribute 'org-verbatim nil :inherit '(shadow fixed-pitch))
+  (set-face-attribute 'org-special-keyword nil :inherit '(font-lock-comment-face fixed-pitch))
+  (set-face-attribute 'org-meta-line nil :inherit '(font-lock-comment-face fixed-pitch))
+  (set-face-attribute 'org-checkbox nil :inherit 'fixed-pitch)
+ )
+#+END_SRC
+
+Integrating font settings for `org-mode` within this section aligns with the goal of maintaining visual consistency and enhances the readability and aesthetic appeal of `org-mode` documents.
+* Key Bindings and Utilities
+** General Keybindings
+`general.el` is used to create more intuitive and memorable keybindings, improving workflow and productivity. Below is the configuration that sets up global and mode-specific keybindings using `general.el`.
+
+#+BEGIN_SRC emacs-lisp
+
+  ;; Org mode configuration for habit tracking
+  (defun exile/org-set-habit ()
+    "Set the current Org mode item as a habit."
+    (interactive)
+    (org-set-property "STYLE" "habit"))
+
+
+   ;; General keybindings management
+   (use-package general
+     :config
+     (general-create-definer exile/leader-keys
+       :keymaps '(normal insert visual emacs)
+       :prefix "SPC" 
+       :global-prefix "C-SPC")
+
+     ;; Define Magit keybindings under the 'g' prefix for Git
+     (exile/leader-keys
+       "g" '(:ignore t :which-key "git (magit)")
+       "gs" '(magit-status :which-key "status")
+       "gc" '(magit-commit :which-key "commit")
+       "gp" '(:ignore t :which-key "push/pull")
+       "gpp" '(magit-push :which-key "push")
+       "gpl" '(magit-pull :which-key "pull")
+       "gb" '(magit-branch :which-key "branch")
+       "gf" '(magit-fetch :which-key "fetch")
+       "gl" '(magit-log-all :which-key "log")
+       "gd" '(magit-diff :which-key "diff"))
+
+     ;; Define keybindings for copilot under the 'c' prefix
+     (exile/leader-keys
+      "c" '(:ignore t :which-key "copilot")
+      "cm" '(exile/copilot-toggle-manual-mode :which-key "toggle manual mode")
+      "ce" '(exile/copilot-activate :which-key "enable copilot")
+      "cd" '(exile/copilot-deactivate :which-key "disable copilot")
+      )
+
+     ;; for org mode keybindings under the 'o' prefix 
+     (exile/leader-keys
+      "o" '(:ignore t :which-key "org mode")
+      "oc" '(org-capture :which-key "capture")
+      "oa" '(org-agenda :which-key "agenda")
+      "ot" '(counsel-org-tag :which-key "set tags")
+      "oe" '(org-set-effort :which-key "set effort based on time")
+      "ol" '(org-insert-link :which-key "insert link")
+      "oi" '(org-toggle-inline-images :which-key "toggle images")
+      "or" '(org-refile :which-key "refile")
+      "os" '(org-schedule :which-key "schedule")
+      "od" '(org-deadline :which-key "deadline")
+      "ou" '(org-time-stamp :which-key " add a time stamp")
+      "oh" '(exile/org-set-habit :which-key "set as habit")
+      )
+     )
+#+END_SRC
+This configuration organizes keybindings into logical groups, making them more manageable and easier to remember. By utilizing `:which-key` descriptions, we also ensure that prompts are available to guide me.
+* Package Configuration
+** Counsel and Ivy Configuration
+*** Counsel
+Counsel is a collection of Ivy-enhanced versions of common Emacs commands. It provides a more modern and user-friendly interface for various built-in Emacs functions, such as `find-file`, `grep`, and `describe-function`. Below is the configuration to set up `counsel` in my Emacs setup.
+
+#+BEGIN_SRC emacs-lisp
+
+  (use-package counsel
+    :bind (("M-x" . counsel-M-x)
+           ("C-x b" . counsel-ibuffer)
+           ("C-x C-f" . counsel-find-file)
+           :map minibuffer-local-map
+           ("C-r" . 'counsel-minibuffer-history))
+    :config
+    (setq ivy-initial-inputs-alist nil))  ;; Don't start searches with ^
+#+END_SRC
+
+This setup binds common actions like `M-x`, buffer switching, and file finding to their `counsel` counterparts, significantly improving the user experience by offering more intelligent and flexible completion options. Additionally, it configures `counsel` to not prepend `^` to searches, making for a more natural typing experience.
+*** Ivy
+Ivy enhances Emacs by providing a flexible interface for text completion and search functionalities. It's central to streamlining interactions with buffers, files, and commands. Below is the configuration that sets up Ivy along with some essential customizations for an optimal experience.
+
+#+BEGIN_SRC emacs-lisp
+
+  (use-package ivy
+    :diminish
+    :bind (("C-s" . swiper) ;; Swiper replaces default Emacs search with Ivy-powered search.
+           :map ivy-minibuffer-map
+           ("TAB" . ivy-alt-done) ;; Allows TAB to select an item from the completion list.
+           ("C-l" . ivy-alt-done)
+           ("C-j" . ivy-next-line) ;; Navigate completion list.
+           ("C-k" . ivy-previous-line) ;; Navigate completion list.
+           :map ivy-switch-buffer-map
+           ("C-k" . ivy-previous-line)
+           ("C-l" . ivy-done)
+           ("C-d" . ivy-switch-buffer-kill) ;; Kill buffer from switch buffer list.
+           :map ivy-reverse-i-search-map
+           ("C-k" . ivy-previous-line)
+           ("C-d" . ivy-reverse-i-search-kill)) ;; Kill buffer from reverse search list.
+    :config
+    (ivy-mode 1) ;; Enable Ivy globally at startup.
+    (setq ivy-use-virtual-buffers t) ;; Add ‘recentf-mode’ and bookmarks to ‘ivy-switch-buffer’.
+    (setq ivy-count-format "(%d/%d) ")) ;; Display the current and total number in the completion list.
+#+END_SRC
+
+With Ivy, searching, switching between buffers, and finding files becomes more intuitive and efficient, thanks to its predictive text completion and minimalist interface. This setup ensures that Ivy is seamlessly integrated into the Emacs environment, enhancing the overall user experience without overwhelming the screen with unnecessary information.
+*** Ivy Enhancements
+**** Ivy Prescient
+Ivy Prescient further refines Ivy's completion mechanism by introducing more intelligent sorting and filtering. This makes finding files, buffers, and commands even faster and more intuitive.
+
+#+BEGIN_SRC emacs-lisp
+
+  (use-package ivy-prescient
+    :after ivy
+    :config
+    (ivy-prescient-mode 1) ;; Activate Ivy Prescient.
+    (prescient-persist-mode 1)) ;; Remember frequently used commands.
+#+END_SRC
+
+This configuration activates Ivy Prescient right after Ivy is loaded, ensuring that all completions benefit from improved sorting and filtering. The `prescient-persist-mode` further enhances this by remembering the most frequently used items, making them appear at the top of the completion list over time.
+**** Ivy Rich
+Ivy Rich enhances the default Ivy experience by adding more context to the items in the completion list. It makes navigating through buffers, search results, and commands more informative by displaying additional details alongside each entry.
+
+#+BEGIN_SRC emacs-lisp
+
+  (use-package ivy-rich
+    :init
+    (ivy-rich-mode 1) ; Enable Ivy Rich globally
+    :config
+    ;; Customize the display transformation for various Ivy commands to include more details
+    (setq ivy-rich-display-transformers-list
+          (plist-put ivy-rich-display-transformers-list
+                     'ivy-switch-buffer
+                     '(:columns
+                       ((ivy-rich-candidate (:width 30)) ; Buffer name
+                        (ivy-rich-switch-buffer-size (:width 7)) ; Buffer size
+                        (ivy-rich-switch-buffer-indicators (:width 4 :face error :align right)) ; Modified status
+                        (ivy-rich-switch-buffer-major-mode (:width 12 :face warning)) ; Major mode
+                        (ivy-rich-switch-buffer-project (:width 15 :face success)) ; Project name or directory
+                        (ivy-rich-switch-buffer-path (:width (lambda (x) (ivy-rich-switch-buffer-shorten-path x (ivy-rich-minibuffer-width 0.3)))))) ; File path that is shortened based on width
+                       :predicate
+                       (lambda (cand) (get-buffer cand)))))); Only display opened buffers 
+#+END_SRC
+
+This setup not only activates Ivy Rich but also customizes how information is displayed for the `ivy-switch-buffer` command. The columns can be adjusted to include information more information or to remove some of the information.
+**** All-the-Icons-Ivy
+All-the-Icons-Ivy enhances the appearance of Ivy completion candidates by adding icons to them. This makes the completion list more visually appealing and easier to navigate.
+
+#+BEGIN_SRC emacs-lisp
+
+  (use-package all-the-icons-ivy
+    :after ivy
+    :init
+    (all-the-icons-ivy-setup)) ;; Automatically enhances Ivy completion with icons
+#+END_SRC
+
+** Which-key Configuration
+Which Key is a utility that improves the discoverability of keybindings in Emacs. It displays a popup with available commands and their descriptions following a prefix key, making it easier to remember shortcuts. 
+
+#+BEGIN_SRC emacs-lisp
+
+  (use-package which-key
+    :init (which-key-mode)
+    :diminish which-key-mode
+    :config
+    (setq which-key-idle-delay 0.3)
+    )
+#+END_SRC
+
+** Helpful Configuration
+Helpful is an alternative to the built-in Emacs help that provides more context and better navigation. It enhances the help experience by displaying documentation in a more readable format and offering additional features like keybinding lookup.
+
+#+begin_src emacs-lisp
+
+  ;; A more informative help system
+  (use-package helpful
+    :bind (([remap describe-function] . counsel-describe-function)
+           ([remap describe-command] . helpful-command)
+           ([remap describe-variable] . counsel-describe-variable)
+           ([remap describe-key] . helpful-key))
+    :custom
+    (counsel-describe-function-function #'helpful-callable)
+    (counsel-describe-variable-function #'helpful-variable)
+    )
+#+end_src
+** Evil Mode Configuration
+*** Basic Evil Mode Setup
+Evil Mode provides Vim keybindings and modal editing features.Below is the basic configuration to set it up.
+
+#+begin_src emacs-lisp
+
+  (use-package evil
+  :init
+  (setq evil-want-integration t)
+  (setq evil-want-keybinding nil)
+  (setq evil-want-C-u-scroll t)
+  (setq evil-want-C-i-jump nil)
+  :config
+  (evil-mode 1)
+  (define-key evil-insert-state-map (kbd "C-g") 'evil-normal-state)
+  (define-key evil-insert-state-map (kbd "C-h") 'evil-delete-backward-char-and-join)
+
+  ;; use visual line motions even outside of visual-line-mode buffers
+  (evil-global-set-key 'motion "j" 'evil-next-visual-line)
+  (evil-global-set-key 'motion "k" 'evil-previous-visual-line)
+
+  (evil-set-initial-state 'messages-buffer-mode 'normal)
+  (evil-set-initial-state 'dashboard-mode 'normal)
+  )
+#+end_src
+*** Evil Collection
+Evil Collection extends Evil Mode's support to various Emacs packages, ensuring a more consistent and complete Vim emulation experience.
+
+#+begin_src emacs-lisp
+
+  ;; Evil keybindings collection
+  (use-package evil-collection
+    :after evil
+    :config
+    (evil-collection-init)
+    )
+#+end_src
+*** Undo Tree Integration
+Undo Tree provides a visual representation of the undo history in Emacs, making it easier to navigate and manage changes. Below is the configuration to integrate it with Evil Mode.
+
+#+begin_src emacs-lisp
+
+  ;; undo tree
+  (use-package undo-tree
+    :init
+    (global-undo-tree-mode 1)
+    :config
+    (setq undo-tree-auto-save-history t) ;; Enable auto-saving of undo history
+    (setq undo-tree-history-directory-alist '(("." . "~/.emacs.d/undo-tree-history"))) ;; Specify where to save undo history files
+    (evil-set-undo-system 'undo-tree))
+
+  ;; Create the directory if it does not exist
+  (unless (file-exists-p "~/.emacs.d/undo-tree-history")
+    (make-directory "~/.emacs.d/undo-tree-history" t))
+#+end_src
+** Hydra
+Hydra is a package that simplifies the creation of Emacs keybindings with a consistent and intuitive interface. It's particularly useful for defining complex or multi-step commands. 
+
+#+begin_src emacs-lisp
+
+  (use-package hydra
+    :config
+    (defhydra exile/hydra-text-scale (:timeout 4 :color pink)
+      "scale text"
+      ("j" text-scale-increase "in")
+      ("k" text-scale-decrease "out")
+      ("q" nil "quit" :exit t))
+  )
+#+end_src
+** All The Icons
+All The Icons is a package that provides a collection of icons for use in Emacs. It enhances the visual appeal of the interface by adding icons to various elements, such as completion candidates and file names.
+
+#+begin_src emacs-lisp
+
+  (use-package all-the-icons
+    :if (display-graphic-p) ;; check if Emacs is running in a graphical display and not inside a terminal;
+    :commands (all-the-icons-install-fonts)
+    :init
+    (unless (find-font (font-spec :name "all-the-icons"))
+      (all-the-icons-install-fonts t))
+    )
+#+end_src
+** All The Icons Dired
+All The Icons Dired is an extension of All The Icons that adds icons to Dired buffers, making file and directory listings more visually appealing and easier to navigate.
+
+#+begin_src emacs-lisp
+  (use-package all-the-icons-dired
+    :if (display-graphic-p) ;; check if Emacs is running in a graphical display and not inside a termina;
+    :hook (dired-mode . all-the-icons-dired-mode)
+    )
+#+end_src
+** Doom Modeline
+Doom Modeline is a minimal and modern mode-line for Emacs. It provides useful information about the current buffer, project, and Git status, enhancing the overall user experience.
+#+begin_src emacs-lisp
+
+  ;; Doom modeline for a fancy status bar
+  (use-package doom-modeline
+    :init (doom-modeline-mode 1)
+    :custom (doom-modeline-height 15)
+   )
+
+#+end_src
+** Doom Themes
+Doom Themes is a collection of modern and aesthetically pleasing themes for Emacs. It offers a wide range of options to customize the look and feel of the interface.
+
+#+begin_src emacs-lisp
+
+  ;; doom themes for aesthetics
+  (use-package doom-themes
+    :init (load-theme 'doom-gruvbox t)
+   )
+#+end_src
+** Magit
+Magit is a powerful Git interface for Emacs that provides a comprehensive set of features for managing Git repositories. It simplifies common Git operations and offers a more efficient workflow.
+#+begin_src emacs-lisp
+
+  ;; magit - git integration
+  (use-package magit
+    :custom
+    (magit-display-buffer-function #'magit-display-buffer-same-window-except-diff-v1)
+    )
+
+#+end_src
+
+** Rainbow Delimiters
+Rainbow Delimiters is a package that highlights nested parentheses, brackets, and braces with different colors, making it easier to visually parse code and understand its structure.
+
+#+begin_src emacs-lisp
+  ;; Rainbow delimiters for colorful parentheses
+(use-package rainbow-delimiters
+  :hook (prog-mode . rainbow-delimiters-mode)
+  )
+#+end_src
+** Org Mode
+*** Org mode setup
+This comprehensive setup not only organizes daily tasks and long-term projects but also captures ideas and notes efficiently. The use of `org-habit` for habit tracking, custom `TODO` keywords for workflow management, and capture templates streamline the task management process. Additionally, the agenda views provide a clear overview of upcoming tasks and deadlines, facilitating better time management and planning.
+
+#+begin_src emacs-lisp
+
+  (defun exile/org-mode-setup ()
+    (org-indent-mode)
+    (variable-pitch-mode 1)
+    (visual-line-mode 1)
+   )
+#+end_src
+
+#+begin_src emacs-lisp
+(use-package org
+  :hook (org-mode . exile/org-mode-setup)
+  :config
+  (setq org-ellipsis " ▼")
+  (setq org-agenda-start-with-log-mode t)
+  (setq org-log-done 'time)
+  (setq org-log-into-drawer t)
+  (setq org-agenda-files exile/org-agenda-files)
+
+  (require 'org-habit)
+  (add-to-list 'org-modules 'org-habit)
+  (setq org-habit-graph-column 60)
+  (setq org-todo-keywords
+	'((sequence "TODO(t)" "NEXT(n)" "|" "DONE(d!)")
+	  (sequence "BACKLOG(b)" "PLAN(p)" "READY(r)" "ACTIVE(a)" "REVIEW(v)" "WAIT(w@/!)" "HOLD(h)" "|" "COMPLETED(c)" "CANC(k@)")))
+
+  (setq org-refile-targets
+    '(("Archive.org" :maxlevel . 1)
+      ("Tasks.org" :maxlevel . 1)))
+
+  ;; Save Org buffers after refiling!
+  (advice-add 'org-refile :after 'org-save-all-org-buffers)
+
+    (setq org-tag-alist
+    '((:startgroup)
+       ; Put mutually exclusive tags here
+       (:endgroup)
+       ("errand" . ?E)
+       ("home" . ?H)
+       ("work" . ?W)
+       ("agenda" . ?a)
+       ("planning" . ?p)
+       ("note" . ?n)
+       ("meeting" . ?m)
+       ("personal" . ?P)
+       ("idea" . ?i)))
+
+  ;; Configure custom agenda views
+  (setq org-agenda-custom-commands
+   '(("d" "Dashboard"
+     ((agenda "" ((org-deadline-warning-days 7)))
+      (todo "NEXT"
+        ((org-agenda-overriding-header "Next Tasks")))
+      (tags-todo "agenda/ACTIVE" ((org-agenda-overriding-header "Active Projects")))))
+
+    ("n" "Next Tasks"
+     ((todo "NEXT"
+        ((org-agenda-overriding-header "Next Tasks")))))
+
+    ("W" "Work Tasks" tags-todo "+work")
+    ("M" "Meetings" tags-todo "+meeting")
+
+    ;; Low-effort next actions
+    ("e" tags-todo "+TODO=\"NEXT\"+Effort<15&+Effort>0"
+     ((org-agenda-overriding-header "Low Effort Tasks")
+      (org-agenda-max-todos 20)
+      (org-agenda-files org-agenda-files)))
+
+    ("w" "Workflow Status"
+     ((todo "WAIT"
+            ((org-agenda-overriding-header "Waiting on External")
+             (org-agenda-files org-agenda-files)))
+      (todo "REVIEW"
+            ((org-agenda-overriding-header "In Review")
+             (org-agenda-files org-agenda-files)))
+      (todo "PLAN"
+            ((org-agenda-overriding-header "In Planning")
+             (org-agenda-todo-list-sublevels nil)
+             (org-agenda-files org-agenda-files)))
+      (todo "BACKLOG"
+            ((org-agenda-overriding-header "Project Backlog")
+             (org-agenda-todo-list-sublevels nil)
+             (org-agenda-files org-agenda-files)))
+      (todo "READY"
+            ((org-agenda-overriding-header "Ready for Work")
+             (org-agenda-files org-agenda-files)))
+      (todo "ACTIVE"
+            ((org-agenda-overriding-header "Active Projects")
+             (org-agenda-files org-agenda-files)))
+      (todo "COMPLETED"
+            ((org-agenda-overriding-header "Completed Projects")
+             (org-agenda-files org-agenda-files)))
+      (todo "CANC"
+            ((org-agenda-overriding-header "Cancelled Projects")
+             (org-agenda-files org-agenda-files)))))))
+
+    (setq org-capture-templates
+    `(("t" "Tasks / Projects")
+      ("tt" "Task" entry (file+olp "~/.emacs.d/OrgFiles/Tasks.org" "Inbox")
+           "* TODO %?\n  %U\n  %a\n  %i" :empty-lines 1)
+
+      ("j" "Journal Entries")
+      ("jj" "Journal" entry
+           (file+olp+datetree "~/.emacs.d/OrgFiles/Journal.org")
+           "\n* %<%I:%M %p> - Journal :journal:\n\n%?\n\n"
+           :clock-in :clock-resume
+           :empty-lines 1)
+      ("jm" "Meeting" entry
+           (file+olp+datetree "~/.emacs.d/OrgFiles/Journal.org")
+           "* %<%I:%M %p> - %a :meetings:\n\n%?\n\n"
+           :clock-in :clock-resume
+           :empty-lines 1)
+
+      ("w" "Workflows")
+      ("we" "Checking Email" entry (file+olp+datetree "~/.emacs.d/OrgFiles/Journal.org")
+           "* Checking Email :email:\n\n%?" :clock-in :clock-resume :empty-lines 1)
+
+      ("m" "Metrics Capture")
+      ("mw" "Weight" table-line (file+headline "~/.emacs.d/OrgFiles/Metrics.org" "Weight")
+       "| %U | %^{Weight} | %^{Notes} |" :kill-buffer t)
+      ("me" "Food" table-line (file+headline "~/.emacs.d/OrgFiles/Metrics.org"  "Food")
+       "| %U | %^{Food} | %^{Notes} |" :kill-buffer t)))
+ 
+  (exile/org-font-setup) ;; Apply font settings for org-mode see: Font Configuration section
+  )
+#+end_src
+*** org-babel
+Org Babel allows for the execution of code blocks within Org documents, supporting multiple programming languages. This functionality is crucial for literate programming, enabling dynamic document generation that combines code execution with narrative text.
+
+To configure Org Babel for various programming languages:
+
+#+begin_src emacs-lisp
+
+  (org-babel-do-load-languages
+   'org-babel-load-languages
+   '((emacs-lisp . t)
+     (python . t)
+     ;; Add more languages as needed
+     ))
+  (setq org-confirm-babel-evaluate nil) ;; Disables confirmation prompt for code block execution.
+#+end_src
+
+This configuration loads support for Emacs Lisp and Python, making it possible to execute code blocks written in these languages directly within an Org document. The setting to disable confirmation prompts streamlines the workflow by allowing immediate code execution.
+
+Automatically tangle our emacs.org config file when we save it:
+
+#+begin_src emacs-lisp
+
+  ;; Automatically tangle our Emacs.org config file when we save it
+  (defun exile/org-babel-tangle-config ()
+    (when (string-equal (buffer-file-name)
+                        (expand-file-name exile/emacs-file))
+      ;; Dynamic scoping to the rescue
+      (let ((org-confirm-babel-evaluate nil))
+        (org-babel-tangle))))
+
+  (add-hook 'org-mode-hook (lambda () (add-hook 'after-save-hook #'exile/org-babel-tangle-config)))
+#+end_src
+
+** Org Tempo for Easy Template Insertion
+Org Tempo provides shortcuts for inserting structured templates, such as source code blocks, making document preparation more efficient.
+
+To extend Org Tempo with shortcuts for various programming languages:
+
+#+begin_src emacs-lisp
+
+  (require 'org-tempo)
+  (eval-after-load 'org
+  '(progn
+    (add-to-list 'org-structure-template-alist '("bat" . "src bat"))))
+#+end_src
+
+These additions to `org-structure-template-alist` enable quick insertion of source code blocks for the specified languages by typing `<` followed by the template shortcut (e.g., `<el` for an Emacs Lisp block) and then pressing `TAB`. This feature significantly enhances the efficiency of writing literate programs or documentation that includes code snippets.
+*** Org Mode Enhancements
+**** org-bullets
+A package that replaces the standard bullet points in org-mode with more visually appealing Unicode characters. This enhances the readability and aesthetics of org-mode documents.
+
+#+begin_src emacs-lisp
+
+  (use-package org-bullets
+    :after org
+    :hook (org-mode . org-bullets-mode)
+    :custom
+    (org-bullets-bullet-list '("◉" "○" "✸" "✿" "✜" "✚" "✦"))
+    )
+#+end_src
+
+**** Visual-fill-column
+A package that enhances the visual appearance of org-mode documents by wrapping the text at a specified column, making it easier to read and navigate long lines.
+
+#+begin_src emacs-lisp
+
+  ;; center text in org mode
+  (defun exile/org-mode-visual-fill ()
+    (setq visual-fill-column-width 100
+  	visual-fill-column-center-text t)
+    (visual-fill-column-mode 1))
+
+  (use-package visual-fill-column
+    :hook (org-mode . exile/org-mode-visual-fill)
+    )
+#+end_src
+
+** Company 
+Company Mode is a powerful auto-completion package for Emacs. It provides a wide range of features for code completion, including intelligent suggestions, pop-up documentation, and more.
+
+#+begin_src emacs-lisp
+
+  ;; company - auto-completion
+  (use-package company
+    :init
+    (add-hook 'after-init-hook 'global-company-mode)
+    (setq company-minimum-prefix-length 3
+          company-selection-wrap-around t 
+          company-tooltip-limit 20
+          company-tooltip-minimum-width 15
+          company-tooltip-align-annotations t))
+#+end_src
+
+** Copilot Configuration
+Copilot enhances coding in Emacs by providing AI-powered code completion and suggestions. Below are configurations and custom functions tailored for Copilot integration.
+
+#+begin_src emacs-lisp
+
+  (use-package copilot
+    :straight (:host github :repo "copilot-emacs/copilot.el" :files ("dist" "*.el"))
+    :diminish ;; don't show in mode line (we don't wanna get caught cheating, right? ;)
+    :config
+
+    ;; global keybindings
+    (general-def
+      "TAB" #'exile/company-or-copilot-or-indent ; for tab completion
+      "M-C-<return>" #'exile/copilot-trigger ; for manual mode (FIX ME): this doesnt seems to work rn
+      )
+    )
+
+#+end_src
+
+*** Variables for Copilot
+These variables act as flags to control Copilot's behavior and interaction with Company mode.
+
+#+begin_src emacs-lisp
+  ;; Flags to control Copilot's behavior
+  (defvar exile/copilot-manual-mode nil
+    "When `t', Copilot only shows completions when manually triggered.")
+
+  (defvar exile/company-active nil
+    "Flag to indicate whether Company's completion menu is active.")
+#+end_src
+
+*** Custom Functions for Copilot
+These functions provide mechanisms to manage Copilot's overlay and integrate it smoothly with Company mode.
+**** Clear Overlay Function
+This function ensures that Copilot's suggestions are temporarily hidden to prevent interference with Company mode's completions.
+
+#+begin_src emacs-lisp
+  (defun exile/copilot-quit ()
+    "Run `copilot-clear-overlay' or `keyboard-quit'. If copilot is cleared, make sure the overlay doesn't come back too soon."
+    (interactive)
+    (condition-case err
+        (when (bound-and-true-p copilot--overlay)
+          (let ((pre-copilot-disable-predicates copilot-disable-predicates))
+            (setq copilot-disable-predicates (list (lambda () t)))
+            (copilot-clear-overlay)
+            (run-with-idle-timer
+             1.0
+             nil
+             (lambda ()
+               (setq copilot-disable-predicates pre-copilot-disable-predicates)))))
+      (error (message "Error handling Copilot overlay: %s" err))))
+#+end_src
+
+**** Overlay Management During Company Completion
+Activates the overlay clearing function when Company mode starts a completion session.
+
+#+begin_src emacs-lisp
+  (defun exile/clear-copilot-during-company ()
+    "Clear Copilot's overlay if Company is active."
+    (when exile/company-active
+      (message "Company completion active, clearing Copilot overlay.")
+      (exile/copilot-quit)))
+#+end_src
+
+**** Company Mode Hooks
+Hooks to detect the start and finish of Company's completion session, adjusting Copilot's behavior accordingly.
+
+#+begin_src emacs-lisp
+  (defun exile/company-started (arg)
+    "Hook function called when Company completion starts."
+    (setq exile/company-active t)
+    (add-hook 'pre-command-hook #'exile/clear-copilot-during-company)
+    (message "Company completion started."))
+
+  (defun exile/company-finished (arg)
+    "Hook function called when Company completion finishes or is cancelled."
+    (remove-hook 'pre-command-hook #'exile/clear-copilot-during-company)
+    (setq exile/company-active nil))
+
+  ;; Catch the start and finish of company completion
+  (with-eval-after-load 'company
+    (add-hook 'company-completion-started-hook #'exile/company-started)
+    (add-hook 'company-completion-finished-hook #'exile/company-finished)
+    (add-hook 'company-completion-cancelled-hook #'exile/company-finished))
+#+end_src
+
+**** Copilot Trigger Function
+Attempts to initiate Copilot completion, providing a manual trigger option.
+
+#+begin_src emacs-lisp
+  (defun exile/copilot-trigger ()
+    "Try to trigger completion with Copilot."
+    (interactive)
+    (if (fboundp 'copilot-complete)
+        (copilot-complete)
+      (message "Copilot completion function not available.")))
+#+end_src
+
+**** Copilot and Company Integration
+Manages the interaction between Copilot and Company, ensuring a seamless user experience.
+
+#+begin_src emacs-lisp
+  (defun exile/company-or-copilot-or-indent ()
+    "Enhanced completion logic to avoid conflicts between Copilot and Company."
+    (interactive)
+    (cond
+     (exile/company-active
+      (company-complete-selection))
+     ((copilot--overlay-visible)
+      (copilot-accept-completion))
+     (t
+      (indent-for-tab-command))))
+#+end_src
+
+**** Copilot Activation and Deactivation
+Functions to manually toggle Copilot's activation state and switch between manual and automatic modes.
+
+#+begin_src emacs-lisp
+  (defun exile/copilot-activate ()
+    "Activate Copilot globally. If already activated, inform the user."
+    (interactive)
+    (if copilot-mode
+        (message "Copilot is already activated")
+      (progn
+        (copilot-mode 1)
+        (setq exile/copilot-manual-mode nil)
+        (message "Copilot activated"))))
+
+  (defun exile/copilot-deactivate ()
+    "Deactivate Copilot globally. If already deactivated, inform the user."
+    (interactive)
+    (if copilot-mode
+        (progn
+          (copilot-mode -1)
+          (setq exile/copilot-manual-mode nil)
+          (message "Copilot deactivated"))
+      (message "Copilot is already deactivated")))
+#+end_src
+
+**** Copilot Manual Mode Toggle
+Provides a way to manually control when Copilot suggestions appear.
+
+#+begin_src emacs-lisp
+  (defun exile/copilot-toggle-manual-mode ()
+    "Toggle Copilot's manual mode."
+    (interactive)
+    (if exile/copilot-manual-mode
+        (progn
+          (setq exile/copilot-manual-mode nil)
+          (message "Copilot manual mode deactivated"))
+      (progn
+        (setq exile/copilot-manual-mode t)
+        ;; Ensure Copilot is activated if we're switching to manual mode.
+        (unless copilot-mode
+          (global-copilot-mode 1))
+        (message "Copilot manual mode activated"))))
+#+end_src
